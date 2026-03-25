@@ -1,6 +1,6 @@
 const liffId = "2008934186-wLBYV2xu"; // 在 LINE Developers 拿到後貼進來
 const apiUrl =
-  "https://untestifying-flora-coquettishly.ngrok-free.dev/webhook-test/reports";
+  "https://untestifying-flora-coquettishly.ngrok-free.dev/webhook/reports";
 
 let chartInstance = null;
 
