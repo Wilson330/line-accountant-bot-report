@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <title>記帳甜甜圈分析</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <div class="app-title">記帳分析儀表板</div>
+
+      <!-- 1. 月份選單：類似圖片的年月選擇器 -->
+      <section>
+        <div class="month-picker card">
+          <!-- 已選月份顯示列 -->
+          <div class="month-display" id="monthDisplay">
+            <span id="monthDisplayText"></span>
+            <button class="icon-btn" id="monthToggleBtn" aria-label="選擇月份">
+              ▾
+            </button>
+          </div>
+
+          <!-- 展開後的月份選擇面板 -->
+          <div class="month-panel" id="monthPanel">
+            <div class="panel-header">
+              <button class="nav-btn" id="yearPrevBtn" aria-label="上一年">
+                ‹
+              </button>
+              <span id="yearLabel"></span>
+              <button class="nav-btn" id="yearNextBtn" aria-label="下一年">
+                ›
+              </button>
+            </div>
+            <div class="month-grid" id="monthGrid">
+              <!-- JS 產生 1~12 月按鈕 -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. 帳本總覽 + 帳本選單 -->
+      <section>
+        <div class="card" id="summaryCard">
+          <div class="summary-header">
+            <span>月結餘 (NT$)</span>
+            <select id="ledgerSelect" class="ledger-select"></select>
+          </div>
+          <div class="summary-amount" id="monthBalance">0</div>
+          <div class="summary-sub">
+            <span>月支出<strong id="monthOut">0</strong></span>
+            <span>月收入<strong id="monthIn">0</strong></span>
+          </div>
+          <div class="hint" id="summaryHint">尚未選擇月份</div>
+        </div>
+      </section>
+
+      <!-- 3. 帳本甜甜圈分析圖 -->
+      <section>
+        <div class="card chart-card">
+          <div class="chart-title" id="chartTitle">帳本支出分析</div>
+          <div class="chart-wrapper">
+            <canvas id="doughnutChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. 帳本明細 -->
+      <section>
+        <div class="detail-list" id="detailList"></div>
+      </section>
+    </div>
+    <!-- LIFF SDK -->
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <!-- 你的主程式 -->
+    <script src="./report.js"></script>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      /* 整體明亮科技感背景 */
+      body {
+        margin: 0;
+        padding: 16px;
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        background: linear-gradient(
+          135deg,
+          #e8f3ff 0,
+          #f7fbff 40%,
+          #ffffff 100%
+        );
+        color: #102033;
+      }
+
+      .app {
+        max-width: 430px;
+        margin: 0 auto;
+      }
+
+      section {
+        margin-bottom: 16px;
+      }
+
+      /* 標題 */
+      .app-title {
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        margin-bottom: 12px;
+        color: #0f172a;
+      }
+
+      /* ---------- 月份選擇器 ---------- */
+
+      .month-picker {
+        padding: 10px 12px;
+      }
+
+      /* 顯示目前選擇的年月 */
+      .month-display {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+      }
+
+      #monthDisplayText {
+        font-size: 14px;
+        font-weight: 500;
+        color: #111827;
+      }
+
+      .icon-btn {
+        border: none;
+        background: #e5f3ff;
+        color: #1f2933;
+        border-radius: 999px;
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
+
+      /* 月份面板容器 */
+      .month-panel {
+        margin-top: 10px;
+        border-radius: 14px;
+        background: #f9fbff;
+        border: 1px solid rgba(148, 163, 184, 0.45);
+        padding: 10px 12px 12px 12px;
+        display: none;
+      }
+
+      .month-panel.open {
+        display: block;
+      }
+
+      /* 年份列：左右箭頭＋年份 */
+      .panel-header {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 18px;
+        margin-bottom: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #111827;
+      }
+
+      .nav-btn {
+        border: none;
+        background: transparent;
+        color: #4b5563;
+        font-size: 18px;
+        cursor: pointer;
+        padding: 4px 8px;
+      }
+
+      /* 1~12 月按鈕網格 */
+      .month-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px 6px;
+        margin-top: 4px;
+      }
+
+      .month-btn {
+        border-radius: 999px;
+        border: none;
+        padding: 6px 0;
+        text-align: center;
+        font-size: 13px;
+        cursor: pointer;
+        background: #ffffff;
+        color: #111827;
+        box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.45);
+      }
+
+      .month-btn:hover {
+        background: #e0f2fe;
+      }
+
+      .month-btn.active {
+        background: #22c55e;
+        color: #ffffff;
+        box-shadow: 0 0 0 1px #16a34a;
+      }
+
+      /* ---------- 一般選單（帳本） ---------- */
+
+      select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(80, 150, 255, 0.5);
+        background: #ffffff;
+        color: #102033;
+        outline: none;
+        font-size: 14px;
+        appearance: none;
+        background-image:
+          linear-gradient(45deg, transparent 50%, #06b47a 50%),
+          linear-gradient(135deg, #06b47a 50%, transparent 50%);
+        background-position:
+          calc(100% - 18px) calc(50% - 3px),
+          calc(100% - 12px) calc(50% - 3px);
+        background-size:
+          6px 6px,
+          6px 6px;
+        background-repeat: no-repeat;
+      }
+
+      /* 帳本選單縮小一點 */
+      .ledger-select {
+        width: 25%;
+        padding: 4px 10px;
+        font-size: 11px;
+        background-position:
+          calc(100% - 12px) 50%,
+          calc(100% - 7px) 50%;
+      }
+
+      /* ---------- 卡片與總覽 ---------- */
+
+      .card {
+        border-radius: 16px;
+        padding: 14px 16px;
+        background: linear-gradient(135deg, #ffffff, #f3f8ff);
+        box-shadow:
+          0 10px 25px rgba(41, 72, 152, 0.15),
+          0 0 0 1px rgba(120, 130, 170, 0.18);
+      }
+
+      .summary-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+        font-size: 12px;
+        color: #64748b;
+      }
+
+      .summary-amount {
+        font-size: 28px;
+        font-weight: 600;
+        color: #06b47a;
+      }
+
+      .summary-sub {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 6px;
+        font-size: 12px;
+      }
+
+      .summary-sub span {
+        color: #4a5a7a;
+      }
+
+      .summary-sub strong {
+        margin-left: 4px;
+      }
+
+      /* 小字說明 */
+      .hint {
+        margin-top: 6px;
+        font-size: 11px;
+        color: #6b7280;
+      }
+
+      /* ---------- 甜甜圈圖區 ---------- */
+
+      .chart-card {
+        padding: 16px 16px 4px 16px;
+      }
+
+      .chart-wrapper {
+        position: relative;
+        width: 100%;
+        height: 260px;
+      }
+
+      .chart-title {
+        font-size: 14px;
+        margin-bottom: 8px;
+        color: #4b5563;
+      }
+
+      /* ---------- 明細列表 ---------- */
+
+      .detail-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .detail-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: #ffffff;
+        border: 1px solid rgba(130, 150, 200, 0.35);
+      }
+
+      .detail-main {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .detail-date {
+        font-size: 11px;
+        color: #7b89a8;
+      }
+
+      .detail-tag {
+        font-size: 13px;
+        color: #111827;
+      }
+
+      .detail-note {
+        font-size: 12px;
+        color: #9aa5c0;
+      }
+
+      .detail-amount {
+        font-size: 14px;
+        font-weight: 600;
+        color: #ff4d6a;
+      }
+
+      /* ---------- 手機優化 ---------- */
+
+      @media (max-width: 420px) {
+        body {
+          padding: 12px;
+        }
+
+        .chart-wrapper {
+          height: 230px;
+        }
+      }
+    </style>
+  </body>
+</html>
