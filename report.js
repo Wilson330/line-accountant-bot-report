@@ -223,12 +223,17 @@ function updateView() {
 }
 
 function updateSummary(data, ym, ledger) {
-  let income = 0,
-    expense = 0;
+  let income = 0;
+  let expense = 0;
+
   data.forEach((r) => {
-    const amt = Number(r.amount);
-    if (amt > 0) income += amt;
-    else expense += Math.abs(amt);
+    const amt = Number(r.amount);  // 這裡假設 amount 全部都是正數
+
+    if (r.type === "收入") {
+      income += amt;
+    } else if (r.type === "支出") {
+      expense += amt;
+    }
   });
 
   document.getElementById("monthIn").textContent = income;
@@ -237,13 +242,30 @@ function updateSummary(data, ym, ledger) {
   document.getElementById("summaryHint").textContent = `${ym}・${ledger} 帳本`;
 }
 
+// function updateSummary(data, ym, ledger) {
+//   let income = 0,
+//     expense = 0;
+//   data.forEach((r) => {
+//     const amt = Number(r.amount);
+//     if (amt > 0) income += amt;
+//     else expense += Math.abs(amt);
+//   });
+
+//   document.getElementById("monthIn").textContent = income;
+//   document.getElementById("monthOut").textContent = expense;
+//   document.getElementById("monthBalance").textContent = income - expense;
+//   document.getElementById("summaryHint").textContent = `${ym}・${ledger} 帳本`;
+// }
+
 function updateChart(data, ledger) {
   const categoryTotals = {};
+
   data.forEach((r) => {
     const amt = Number(r.amount);
-    if (amt < 0) {
+    // 只統計「支出」類型，排除 CATEGORY_LIST / 空 type 等雜訊
+    if (r.type === "支出") {
       const key = r.category || "未分類";
-      categoryTotals[key] = (categoryTotals[key] || 0) + Math.abs(amt);
+      categoryTotals[key] = (categoryTotals[key] || 0) + amt;
     }
   });
 
@@ -297,6 +319,66 @@ function updateChart(data, ledger) {
   document.getElementById("chartTitle").textContent = `${ledger} 帳本支出分析`;
 }
 
+// function updateChart(data, ledger) {
+//   const categoryTotals = {};
+//   data.forEach((r) => {
+//     const amt = Number(r.amount);
+//     if (amt < 0) {
+//       const key = r.category || "未分類";
+//       categoryTotals[key] = (categoryTotals[key] || 0) + Math.abs(amt);
+//     }
+//   });
+
+//   const labels = Object.keys(categoryTotals);
+//   const values = Object.values(categoryTotals);
+
+//   const ctx = document.getElementById("doughnutChart").getContext("2d");
+//   if (chartInstance) chartInstance.destroy();
+
+//   chartInstance = new Chart(ctx, {
+//     type: "doughnut",
+//     data: {
+//       labels,
+//       datasets: [
+//         {
+//           data: values,
+//           backgroundColor: [
+//             "#22c55e",
+//             "#0ea5e9",
+//             "#f97316",
+//             "#e11d48",
+//             "#8b5cf6",
+//             "#14b8a6",
+//           ],
+//           borderWidth: 0,
+//         },
+//       ],
+//     },
+//     options: {
+//       responsive: true,
+//       maintainAspectRatio: false,
+//       cutout: "70%",
+//       plugins: {
+//         legend: {
+//           position: "bottom",
+//           labels: {
+//             color: "#334155",
+//             boxWidth: 10,
+//             font: { size: 11 },
+//           },
+//         },
+//         tooltip: {
+//           callbacks: {
+//             label: (ctx) => `${ctx.label}: ${ctx.parsed} 元`,
+//           },
+//         },
+//       },
+//     },
+//   });
+
+//   document.getElementById("chartTitle").textContent = `${ledger} 帳本支出分析`;
+// }
+
 function updateDetails(data) {
   const list = document.getElementById("detailList");
   list.innerHTML = "";
@@ -328,13 +410,64 @@ function updateDetails(data) {
 
     const amt = document.createElement("div");
     amt.className = "detail-amount";
-    amt.textContent = Number(r.amount) > 0 ? `+${r.amount}` : r.amount;
+
+    const value = Number(r.amount);
+
+    if (r.type === "收入") {
+      amt.textContent = `+${value}`;
+      amt.style.color = "#16a34a"; // 收入：綠色
+    } else if (r.type === "支出") {
+      amt.textContent = `-${value}`;
+      // 支出：沿用原本 CSS 的紅色 .detail-amount
+    } else {
+      // 例如 CATEGORY_LIST 或其他輔助資料，不加正負號
+      amt.textContent = value;
+    }
 
     wrap.appendChild(main);
     wrap.appendChild(amt);
     list.appendChild(wrap);
   });
 }
+
+// function updateDetails(data) {
+//   const list = document.getElementById("detailList");
+//   list.innerHTML = "";
+
+//   const sorted = [...data].sort((a, b) => b.date.localeCompare(a.date));
+
+//   sorted.forEach((r) => {
+//     const wrap = document.createElement("div");
+//     wrap.className = "detail-item";
+
+//     const main = document.createElement("div");
+//     main.className = "detail-main";
+
+//     const date = document.createElement("div");
+//     date.className = "detail-date";
+//     date.textContent = r.date;
+
+//     const tag = document.createElement("div");
+//     tag.className = "detail-tag";
+//     tag.textContent = r.category || "未分類";
+
+//     const note = document.createElement("div");
+//     note.className = "detail-note";
+//     note.textContent = r.note || "";
+
+//     main.appendChild(date);
+//     main.appendChild(tag);
+//     if (note.textContent) main.appendChild(note);
+
+//     const amt = document.createElement("div");
+//     amt.className = "detail-amount";
+//     amt.textContent = Number(r.amount) > 0 ? `+${r.amount}` : r.amount;
+
+//     wrap.appendChild(main);
+//     wrap.appendChild(amt);
+//     list.appendChild(wrap);
+//   });
+// }
 
 main();
 // loadData();
